@@ -11,6 +11,10 @@ class Op(IntEnum):
     MUL = 2
     INPUT = 3
     OUTPUT = 4
+    JMPT = 5
+    JMPF = 6
+    LT = 7
+    EQ = 8
     HALT = 99
 
 class Mode(IntEnum):
@@ -22,6 +26,10 @@ N_ARGS = {
     Op.MUL: 2,
     Op.INPUT: 0,
     Op.OUTPUT: 1,
+    Op.JMPT: 2,
+    Op.JMPF: 2,
+    Op.LT: 2,
+    Op.EQ: 2,
 }
 
 class Process():
@@ -33,25 +41,25 @@ class Process():
         self.outputs = []
 
         self.ip = 0
-        if DEBUG:
-            self.dump()
-
         while True:
+            if DEBUG:
+                self.dump()
+
             inst = self.decode(self.ip)
 
             args = [self.load_arg(p) for p in inst.src_params]
             try:
-                ret_values = self.exec(inst.op, args)
+                ret_values, next_ip = self.exec(inst, args)
             except StopIteration:
                 break
 
             for rv, p in zip(ret_values, inst.dst_params):
                 self.store(rv, p)
 
-            self.ip += inst.ip_incr()
-
-            if DEBUG:
-                self.dump()
+            if next_ip is None:
+                self.ip += inst.ip_incr()
+            else:
+                self.ip = next_ip
 
         return self.outputs
 
@@ -76,7 +84,11 @@ class Process():
         if not(set(modes) <= set([Mode.ADDR, Mode.IMM])):
             op = code
 
-        if op in [Op.ADD, Op.MUL]:
+        if ip + n_args >= len(self.mem):
+            # Op without args -- keep it undecoded.
+            src_params = []
+            dst_params = []
+        elif op in [Op.ADD, Op.MUL, Op.LT, Op.EQ]:
             x = self.mem[ip + 1]
             y = self.mem[ip + 2]
             z = self.mem[ip + 3]
@@ -99,6 +111,14 @@ class Process():
                 Param(x, modes[0]),
             ]
             dst_params = []
+        elif op in [Op.JMPT, Op.JMPF]:
+            x = self.mem[ip + 1]
+            y = self.mem[ip + 2]
+            src_params = [
+                Param(x, modes[0]),
+                Param(y, modes[1]),
+            ]
+            dst_params = []
         else:
             src_params = []
             dst_params = []
@@ -116,26 +136,38 @@ class Process():
         assert param.mode == Mode.ADDR
         self.mem[param.num] = value
 
-    def exec(self, op, args):
+    def exec(self, inst, args):
         r = None
-        if op == Op.ADD:
+        next_ip = None
+        if inst.op == Op.ADD:
             r = args[0] + args[1]
-        elif op == Op.MUL:
+        elif inst.op == Op.MUL:
             r = args[0] * args[1]
-        elif op == Op.INPUT:
+        elif inst.op == Op.INPUT:
             r = self.inputs[0]
             self.inputs = self.inputs[1:]
-        elif op == Op.OUTPUT:
+        elif inst.op == Op.OUTPUT:
             self.outputs.append(args[0])
-        elif op == Op.HALT:
+        elif inst.op == Op.JMPT:
+            if args[0] != 0:
+                next_ip = args[1]
+        elif inst.op == Op.JMPF:
+            if args[0] == 0:
+                next_ip = args[1]
+        elif inst.op == Op.LT:
+            r = int(args[0] < args[1])
+        elif inst.op == Op.EQ:
+            r = int(args[0] == args[1])
+        elif inst.op == Op.HALT:
             raise StopIteration
         else:
-            raise Exception(f"Unknown opcode: {op}")
+            raise Exception(f"Unknown opcode: {inst.op}")
 
         ret_values = []
         if r is not None:
             ret_values.append(r)
-        return ret_values
+
+        return ret_values, next_ip
 
     def dump(self):
         def write(s):
@@ -177,10 +209,11 @@ class Param(namedtuple('Param', 'num mode')):
 class Inst(namedtuple('Inst', ['op', 'src_params', 'dst_params'])):
     def __str__(self):
         if isinstance(self.op, Op):
-            op = self.op.name
+            s = self.op.name
         else:
-            op = f"{self.op}!"
-        s = op + ' ' + ', '.join(str(a) for a in self.src_params)
+            s = f"{self.op}!"
+        if self.src_params:
+            s += ' ' + ', '.join(str(a) for a in self.src_params)
         if self.dst_params:
             s += ' > ' + ', '.join(str(r) for r in self.dst_params)
         return s
