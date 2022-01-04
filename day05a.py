@@ -12,11 +12,10 @@ PROGRESS = os.environ.get("PROGRESS")
 def main():
     f = fileinput.input()
     program = [int(x) for x in next(f).split(',')]
-    inputs = [1]
 
-    p = intcode.Process(program, inputs)
-    outputs = p.run()
-    for y in outputs:
+    p = intcode.Process(program)
+    p.write(1)
+    for y in p.read_all():
         print(y)
 
 main()

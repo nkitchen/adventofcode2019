@@ -1,3 +1,4 @@
+import multiprocessing as mp
 import operator
 import os
 import sys
@@ -33,13 +34,23 @@ N_ARGS = {
 }
 
 class Process():
-    def __init__(self, program, inputs):
+    def __init__(self, program, input_queue=None, output_queue=None):
         self.mem = list(program)
-        self.inputs = inputs
+
+        if input_queue is None:
+            self.input_queue = mp.SimpleQueue()
+        else:
+            self.input_queue = input_queue
+
+        if output_queue is None:
+            self.output_queue = mp.SimpleQueue()
+        else:
+            self.output_queue = output_queue
+
+        self._proc = mp.Process(target=self.run, daemon=True)
+        self._proc.start()
 
     def run(self):
-        self.outputs = []
-
         self.ip = 0
         while True:
             if DEBUG:
@@ -51,6 +62,7 @@ class Process():
             try:
                 ret_values, next_ip = self.exec(inst, args)
             except StopIteration:
+                self.output_queue.put(None)
                 break
 
             for rv, p in zip(ret_values, inst.dst_params):
@@ -60,8 +72,6 @@ class Process():
                 self.ip += inst.ip_incr()
             else:
                 self.ip = next_ip
-
-        return self.outputs
 
     def decode(self, ip):
         code = self.mem[ip]
@@ -144,10 +154,9 @@ class Process():
         elif inst.op == Op.MUL:
             r = args[0] * args[1]
         elif inst.op == Op.INPUT:
-            r = self.inputs[0]
-            self.inputs = self.inputs[1:]
+            r = self.input_queue.get()
         elif inst.op == Op.OUTPUT:
-            self.outputs.append(args[0])
+            self.output_queue.put(args[0])
         elif inst.op == Op.JMPT:
             if args[0] != 0:
                 next_ip = args[1]
@@ -169,12 +178,22 @@ class Process():
 
         return ret_values, next_ip
 
+    def read(self):
+        return self.output_queue.get()
+
+    def read_all(self):
+        while True:
+            value = self.read()
+            if value is None:
+                return
+            yield value
+
+    def write(self, value):
+        self.input_queue.put(value)
+
     def dump(self):
         def write(s):
             print(s, file=sys.stderr, end='')
-
-        write(f'< {self.inputs}\n')
-        write(f'> {self.outputs}\n')
 
         ip = 0
         while ip < len(self.mem):
