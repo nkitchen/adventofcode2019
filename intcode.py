@@ -1,3 +1,4 @@
+import io
 import multiprocessing as mp
 import operator
 import os
@@ -22,19 +23,24 @@ class Mode(IntEnum):
     ADDR = 0
     IMM = 1
 
-N_ARGS = {
-    Op.ADD: 2,
-    Op.MUL: 2,
-    Op.INPUT: 0,
+N_PARAMS = {
+    Op.ADD: 3,
+    Op.MUL: 3,
+    Op.INPUT: 1,
     Op.OUTPUT: 1,
     Op.JMPT: 2,
     Op.JMPF: 2,
-    Op.LT: 2,
-    Op.EQ: 2,
+    Op.LT: 3,
+    Op.EQ: 3,
 }
 
 class Process():
+    next_id = 1
+
     def __init__(self, program, input_queue=None, output_queue=None):
+        self.id = Process.next_id
+        Process.next_id += 1
+
         self.mem = list(program)
 
         if input_queue is None:
@@ -83,10 +89,10 @@ class Process():
             pass
         code //= 100
 
-        n_args = N_ARGS.get(op, 0)
+        n_params = N_PARAMS.get(op, 0)
 
         modes = []
-        for i in range(n_args):
+        for i in range(n_params):
             modes.append(code % 10)
             code //= 10
 
@@ -94,7 +100,7 @@ class Process():
         if not(set(modes) <= set([Mode.ADDR, Mode.IMM])):
             op = code
 
-        if ip + n_args >= len(self.mem):
+        if ip + n_params >= len(self.mem):
             # Op without args -- keep it undecoded.
             src_params = []
             dst_params = []
@@ -155,7 +161,11 @@ class Process():
             r = args[0] * args[1]
         elif inst.op == Op.INPUT:
             r = self.input_queue.get()
+            if DEBUG:
+                print(f"Process {self.id}: input {r}", file=sys.stderr)
         elif inst.op == Op.OUTPUT:
+            if DEBUG:
+                print(f"Process {self.id}: output {args[0]}", file=sys.stderr)
             self.output_queue.put(args[0])
         elif inst.op == Op.JMPT:
             if args[0] != 0:
@@ -192,9 +202,11 @@ class Process():
         self.input_queue.put(value)
 
     def dump(self):
+        buf = io.StringIO()
         def write(s):
-            print(s, file=sys.stderr, end='')
+            print(s, file=buf, end='')
 
+        write(f"[Process {self.id}]\n")
         ip = 0
         while ip < len(self.mem):
             if ip == self.ip:
@@ -216,6 +228,8 @@ class Process():
 
             ip += inst.ip_incr()
         write("\n")
+
+        print(buf.getvalue(), file=sys.stderr)
 
 class Param(namedtuple('Param', 'num mode')):
     def __str__(self):
