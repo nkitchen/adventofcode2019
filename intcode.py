@@ -1,7 +1,11 @@
+#!/usr/bin/env python3
+
+import fileinput
 import io
 import operator
 import os
 import sys
+from collections import defaultdict
 from collections import namedtuple
 from enum import IntEnum
 
@@ -40,7 +44,7 @@ class Process():
         self.id = Process.next_id
         Process.next_id += 1
 
-        self.mem = list(program)
+        self.mem = defaultdict(int, enumerate(program))
         self._inputs = []
         self._outputs = self.run()
 
@@ -92,11 +96,7 @@ class Process():
         if not(set(modes) <= set([Mode.ADDR, Mode.IMM])):
             op = code
 
-        if ip + n_params >= len(self.mem):
-            # Op without args -- keep it undecoded.
-            src_params = []
-            dst_params = []
-        elif op in [Op.ADD, Op.MUL, Op.LT, Op.EQ]:
+        if op in [Op.ADD, Op.MUL, Op.LT, Op.EQ]:
             x = self.mem[ip + 1]
             y = self.mem[ip + 2]
             z = self.mem[ip + 3]
@@ -202,7 +202,7 @@ class Process():
 
         write(f"[Process {self.id}]\n")
         ip = 0
-        while ip < len(self.mem):
+        while ip <= max(self.mem.keys()):
             if ip == self.ip:
                 write("==> ")
             else:
@@ -247,3 +247,10 @@ class Inst(namedtuple('Inst', ['op', 'src_params', 'dst_params'])):
 
     def ip_incr(self):
         return 1 + len(self.src_params) + len(self.dst_params)
+
+if __name__ == '__main__':
+    f = fileinput.input()
+    program = [int(x) for x in next(f).split(',')]
+    p = Process(program)
+    for y in p._outputs:
+        print(y)
