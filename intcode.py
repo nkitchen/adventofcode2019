@@ -20,11 +20,13 @@ class Op(IntEnum):
     JMPF = 6
     LT = 7
     EQ = 8
+    REL_OFFSET = 9
     HALT = 99
 
 class Mode(IntEnum):
     ADDR = 0
     IMM = 1
+    REL = 2
 
 N_PARAMS = {
     Op.ADD: 3,
@@ -35,6 +37,7 @@ N_PARAMS = {
     Op.JMPF: 2,
     Op.LT: 3,
     Op.EQ: 3,
+    Op.REL_OFFSET: 1,
 }
 
 class Process():
@@ -45,8 +48,9 @@ class Process():
         Process.next_id += 1
 
         self.mem = defaultdict(int, enumerate(program))
+        self.rel_base = 0
         self._inputs = []
-        self._outputs = self.run()
+        self.outputs = self.run()
 
     def run(self):
         self.ip = 0
@@ -61,9 +65,11 @@ class Process():
             if inst.op == Op.HALT:
                 return
 
+            next_ip = None
             if inst.op == Op.OUTPUT:
-                next_ip = None
                 yield args[0]
+            elif inst.op == Op.REL_OFFSET:
+                self.rel_base += args[0]
             else:
                 ret_values, next_ip = self.exec(inst, args)
 
@@ -93,7 +99,7 @@ class Process():
             code //= 10
 
         # Unrecognized mode?  Keep it undecoded.
-        if not(set(modes) <= set([Mode.ADDR, Mode.IMM])):
+        if not(set(modes) <= set([Mode.ADDR, Mode.IMM, Mode.REL])):
             op = code
 
         if op in [Op.ADD, Op.MUL, Op.LT, Op.EQ]:
@@ -105,13 +111,13 @@ class Process():
                 Param(y, modes[1]),
             ]
             dst_params = [
-                Param(z, Mode.ADDR),
+                Param(z, modes[2]),
             ]
         elif op == Op.INPUT:
             z = self.mem[ip + 1]
             src_params = []
             dst_params = [
-                Param(z, Mode.ADDR),
+                Param(z, modes[0]),
             ]
         elif op == Op.OUTPUT:
             x = self.mem[ip + 1]
@@ -127,6 +133,12 @@ class Process():
                 Param(y, modes[1]),
             ]
             dst_params = []
+        elif op == Op.REL_OFFSET:
+            x = self.mem[ip + 1]
+            src_params = [
+                Param(x, modes[0]),
+            ]
+            dst_params = []
         else:
             src_params = []
             dst_params = []
@@ -134,15 +146,20 @@ class Process():
         return Inst(op, src_params, dst_params)
 
     def load_arg(self, param):
-        if param.mode == Mode.IMM:
+        if param.mode == Mode.ADDR:
+            return self.mem[param.num]
+        elif param.mode == Mode.IMM:
             return param.num
         else:
-            assert param.mode == Mode.ADDR
-            return self.mem[param.num]
+            assert param.mode == Mode.REL
+            return self.mem[self.rel_base + param.num]
 
     def store(self, value, param):
-        assert param.mode == Mode.ADDR
-        self.mem[param.num] = value
+        if param.mode == Mode.ADDR:
+            self.mem[param.num] = value
+        else:
+            assert param.mode == Mode.REL
+            self.mem[self.rel_base + param.num] = value
 
     def exec(self, inst, args):
         r = None
@@ -181,7 +198,7 @@ class Process():
 
     def read(self):
         try:
-            return next(self._outputs)
+            return next(self.outputs)
         except StopIteration:
             return None
 
@@ -201,8 +218,19 @@ class Process():
             print(s, file=buf, end='')
 
         write(f"[Process {self.id}]\n")
+        write(f"Rel base: {self.rel_base}\n")
         ip = 0
+        skipping = False
         while ip <= max(self.mem.keys()):
+            if all(self.mem.get(a, 0) == 0 for a in range(ip, ip + 4)):
+                if not skipping:
+                    write("     ...\n")
+                    skipping = True
+                ip += 1
+                continue
+            else:
+                skipping = False
+
             if ip == self.ip:
                 write("==> ")
             else:
@@ -229,9 +257,11 @@ class Param(namedtuple('Param', 'num mode')):
     def __str__(self):
         if self.mode == Mode.ADDR:
             return f"[{self.num}]"
-        else:
-            assert self.mode == Mode.IMM
+        elif self.mode == Mode.IMM:
             return f"#{self.num}"
+        else:
+            assert self.mode == Mode.REL
+            return f"[R{self.num:+}]"
 
 class Inst(namedtuple('Inst', ['op', 'src_params', 'dst_params'])):
     def __str__(self):
@@ -252,5 +282,5 @@ if __name__ == '__main__':
     f = fileinput.input()
     program = [int(x) for x in next(f).split(',')]
     p = Process(program)
-    for y in p._outputs:
+    for y in p.outputs:
         print(y)
