@@ -1,5 +1,4 @@
 import io
-import multiprocessing as mp
 import operator
 import os
 import sys
@@ -37,24 +36,13 @@ N_PARAMS = {
 class Process():
     next_id = 1
 
-    def __init__(self, program, input_queue=None, output_queue=None):
+    def __init__(self, program):
         self.id = Process.next_id
         Process.next_id += 1
 
         self.mem = list(program)
-
-        if input_queue is None:
-            self.input_queue = mp.SimpleQueue()
-        else:
-            self.input_queue = input_queue
-
-        if output_queue is None:
-            self.output_queue = mp.SimpleQueue()
-        else:
-            self.output_queue = output_queue
-
-        self._proc = mp.Process(target=self.run, daemon=True)
-        self._proc.start()
+        self._inputs = []
+        self._outputs = self.run()
 
     def run(self):
         self.ip = 0
@@ -65,14 +53,18 @@ class Process():
             inst = self.decode(self.ip)
 
             args = [self.load_arg(p) for p in inst.src_params]
-            try:
-                ret_values, next_ip = self.exec(inst, args)
-            except StopIteration:
-                self.output_queue.put(None)
-                break
 
-            for rv, p in zip(ret_values, inst.dst_params):
-                self.store(rv, p)
+            if inst.op == Op.HALT:
+                return
+
+            if inst.op == Op.OUTPUT:
+                next_ip = None
+                yield args[0]
+            else:
+                ret_values, next_ip = self.exec(inst, args)
+
+                for rv, p in zip(ret_values, inst.dst_params):
+                    self.store(rv, p)
 
             if next_ip is None:
                 self.ip += inst.ip_incr()
@@ -155,12 +147,13 @@ class Process():
     def exec(self, inst, args):
         r = None
         next_ip = None
+        assert inst.op != Op.OUTPUT
         if inst.op == Op.ADD:
             r = args[0] + args[1]
         elif inst.op == Op.MUL:
             r = args[0] * args[1]
         elif inst.op == Op.INPUT:
-            r = self.input_queue.get()
+            r = self._inputs.pop(0)
             if DEBUG:
                 print(f"Process {self.id}: input {r}", file=sys.stderr)
         elif inst.op == Op.OUTPUT:
@@ -177,8 +170,6 @@ class Process():
             r = int(args[0] < args[1])
         elif inst.op == Op.EQ:
             r = int(args[0] == args[1])
-        elif inst.op == Op.HALT:
-            raise StopIteration
         else:
             raise Exception(f"Unknown opcode: {inst.op}")
 
@@ -189,7 +180,10 @@ class Process():
         return ret_values, next_ip
 
     def read(self):
-        return self.output_queue.get()
+        try:
+            return next(self._outputs)
+        except StopIteration:
+            return None
 
     def read_all(self):
         while True:
@@ -199,7 +193,7 @@ class Process():
             yield value
 
     def write(self, value):
-        self.input_queue.put(value)
+        self._inputs.append(value)
 
     def dump(self):
         buf = io.StringIO()

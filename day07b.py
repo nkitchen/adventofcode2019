@@ -16,12 +16,9 @@ def main():
     program = [int(x) for x in next(f).split(',')]
 
     def thruster_signal(phase_seq):
-        queues = [mp.SimpleQueue() for i in range(len(phase_seq) + 1)]
         procs = []
-        for i, phase in enumerate(phase_seq):
-            in_q = queues[i]
-            out_q = queues[i + 1]
-            p = intcode.Process(program, input_queue=in_q, output_queue=out_q)
+        for phase in phase_seq:
+            p = intcode.Process(program)
             procs.append(p)
             p.write(phase)
 
@@ -29,13 +26,16 @@ def main():
 
         loop_outputs = []
         while True:
-            signal = procs[-1].read()
-            if signal is None:
-                break
-            loop_outputs.append(signal)
-            procs[0].write(signal)
-
-        return loop_outputs[-1]
+            for i, p in enumerate(procs):
+                signal = p.read()
+                if signal is not None:
+                    q = procs[(i + 1) % len(procs)]
+                    q.write(signal)
+                if i == len(procs) - 1:
+                    if signal is None:
+                        return loop_outputs[-1]
+                    else:
+                        loop_outputs.append(signal)
 
     m = max(thruster_signal(phase_seq)
              for phase_seq in itertools.permutations(range(5, 10)))
