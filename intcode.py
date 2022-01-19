@@ -9,7 +9,7 @@ from collections import defaultdict
 from collections import namedtuple
 from enum import IntEnum
 
-DEBUG = os.environ.get("DEBUG")
+DEBUG = 'intcode' in os.environ.get("DEBUG", "")
 
 class Op(IntEnum):
     ADD = 1
@@ -259,9 +259,10 @@ class Param(namedtuple('Param', 'num mode')):
             return f"[{self.num}]"
         elif self.mode == Mode.IMM:
             return f"#{self.num}"
-        else:
-            assert self.mode == Mode.REL
+        elif self.mode == Mode.REL:
             return f"[R{self.num:+}]"
+        else:
+            return f"<{self.num}>"
 
 class Inst(namedtuple('Inst', ['op', 'src_params', 'dst_params'])):
     def __str__(self):
