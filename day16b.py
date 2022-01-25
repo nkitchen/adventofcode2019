@@ -25,10 +25,10 @@ def main():
     input_line = next(f).rstrip()
     input_digits = [int(c) for c in input_line]
 
-    signal = input_digits * REPEATS
+    signal = np.tile(np.array(input_digits), REPEATS)
     n = len(signal)
     for phase in range(PHASES):
-        adder = Adder(signal)
+        cum = np.cumsum(signal)
         out_signal = np.zeros((n,), dtype=int)
         for out_index in range(n):
             if PROGRESS and out_index % 10000 == 0:
@@ -42,7 +42,12 @@ def main():
             while i < n:
                 c = base_pattern[pattern_index]
                 if c != 0:
-                    s += c * adder.block_sum(i, i + block_size - 1)
+                    if block_size == 1:
+                        bs = signal[i]
+                    else:
+                        j = min(n - 1, i + block_size - 1)
+                        bs = cum[j] - cum[i - 1]
+                    s += c * bs
                 i += block_size
                 pattern_index = (pattern_index + 1) % len(base_pattern)
 
@@ -57,81 +62,9 @@ def main():
     else:
         offset = int(input_line[:OFFSET_DIGITS], 10)
 
-    message = signal[offset:]
+    message = signal[offset:offset + 8]
 
     print(''.join(map(str, message)))
-
-class Adder():
-    def __init__(self, data):
-        self.data = data
-        self.aligned_cache = {}
-
-    def block_sum(self, first, last):
-        dprint(f"block_sum({first}, {last})")
-
-        first = max(0, first)
-        last = min(len(self.data) - 1, last)
-
-        if first == last:
-            return self.data[first]
-
-        # Partition into aligned ranges of power-of-two sizes.
-
-        # Structure: A sequence of sub-blocks of increasing size, until the biggest
-        # sub-block in the range, then a sequence of decreasing sub-blocks.
-        # Either sequence can be empty.
-        #
-        # Ex: 11-26 (01011-11010)
-        #   Sub-blocks: 11 12-15 16-23 24-25 26
-        #   Sizes:       1     4     8     2  1
-        #
-        #   01011
-        #       ^ + 1 <= 11010
-        #   01100
-        #     ^   + 4 <= 11010
-        #   10000
-        #   ^     + 16 > 11010
-        #
-        #   01011 remaining
-        #   1 ending at 11010: 11010-11010
-        #   2 ending at 11001: 11000-11001
-        #   8 ending at 10111: 10000-10111
-
-        s = 0
-        i = first
-        while True:
-            # Lowest 1 bit
-            b = i & -i
-            if b == 0:
-                break
-            elif i + b <= last:
-                s += self.aligned_sum(i, i + b - 1)
-                i += b
-            else:
-                break
-        j = last
-        while i <= j:
-            remaining = j - i + 1
-            b = remaining & -remaining
-            s += self.aligned_sum(j - b + 1, j)
-            j -= b
-
-        return s
-
-    def aligned_sum(self, first, last):
-        dprint(f"aligned_sum({first}, {last})")
-
-        if first == last:
-            return self.data[first]
-
-        k = (first, last)
-        s = self.aligned_cache.get(k)
-        if s is None:
-            d = last - first + 1
-            m = first + d // 2
-            s = self.aligned_sum(first, m - 1) + self.aligned_sum(m, last)
-            self.aligned_cache[k] = s
-        return s
 
 main()
 
