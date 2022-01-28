@@ -1,0 +1,45 @@
+x x 8 R 4 L 4 L 10 L 8 L 8 R 4 L 4 L 10 L 8
+R 12 R 12 L 8 L 8 L 10 L 4 L 4
+R 12 R 12 L 8 L 8 L 10 L 4 L 4
+R 12 R 12 L 8 L 8 L 10 L 4 L 4
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+L 10 L 4 L 4 L 8 R 4 L 4 L 10 L 8
+
+x x 8 R 4 L 4 L 10 L 8 L 8 R 4 L 4 L 10 L 8
+                                   L 10 L 4 L 4 L 8 R 4 L 4 L 10 L 8
+
+           x x 8 R 4 L 4 L 10 L 8 L 8 R 4 L 4 L 10 L 8
+L 10 L 4 L 4 L 8 R 4 L 4 L 10 L 8
+
+x x 8 R 4 L 4 L 6 4 L 4 4 L 8 R 4 L 4 L 10 L 8
+                  L 4 L 4 L 8 R 4 L 4 L 10 L 8
+		        BBBBBBBBBBBBBBBBBBBBBB
+
+x x R L L L L R L L L
+      L L L L R L L L
+
+          x x R L L L L R L L L
+      L L L L R L L L
+
+x L 8 R 4 L 4 L 10 L 4 
+                  L 4 L
+
+x L 8 R 4 L 4 L 10 L 4 
+
+
+L 8 R 4 L 4 L 10 L 8
+L 8 R 4 L 4 L 10 L 8
+R 12 R 12 L 8 L 8 L 10 L 4 L 4
+R 12 R 12 L 8 L 8 L 10 L 4 L 4
+R 12 R 12 L 8 L 8 L 10 L 4 L 4
+
+L10 L4 L4
+L 8 R 4 L 4 L 10 L 8
+
+A
+A
+BC
+BC
+BC
+C
+A
