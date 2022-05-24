@@ -44,9 +44,9 @@ def main():
 
     def pulled(x, y):
         p = intcode.Process(program)
-        p.write(x)
-        p.write(y)
-        r = p.read()
+        p.write_in(x)
+        p.write_in(y)
+        r = p.read_out()
         assert r in [0, 1]
         return r == 1
 

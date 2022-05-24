@@ -55,7 +55,7 @@ def main():
 class Controller(intcode.Process):
     def write_line(self, s):
         for c in s:
-            self.write(ord(c))
-        self.write(ord('\n'))
+            self.write_in(ord(c))
+        self.write_in(ord('\n'))
 
 main()

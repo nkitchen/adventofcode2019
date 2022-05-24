@@ -65,8 +65,8 @@ class Droid():
         self.pos = Point(0, 0)
 
     def move(self, cmd):
-        self.control.write(cmd)
-        status = self.control.read()
+        self.control.write_in(cmd)
+        status = self.control.read_out()
         self.status = status
 
         p = self.pos.neighbor(cmd)

@@ -24,11 +24,11 @@ def main():
 
     robot = intcode.Process(program)
     while True:
-        robot.write(panel[(x,y)])
-        color = robot.read()
+        robot.write_in(panel[(x,y)])
+        color = robot.read_out()
         if color is None:
             break
-        turn = robot.read()
+        turn = robot.read_out()
 
         panel[(x,y)] = color
         painted.add((x, y))

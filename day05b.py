@@ -14,8 +14,8 @@ def main():
     program = [int(x) for x in next(f).split(',')]
 
     p = intcode.Process(program)
-    p.write(5)
-    for y in p.read_all():
+    p.write_in(5)
+    for y in p.read_out_all():
         print(y)
 
 main()

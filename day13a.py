@@ -23,11 +23,11 @@ def main():
 
     game = intcode.Process(program)
     while True:
-        x = game.read()
+        x = game.read_out()
         if x is None:
             break
-        y = game.read()
-        tile = game.read()
+        y = game.read_out()
+        tile = game.read_out()
         screen[(x,y)] = tile
 
     blocks = sum(x == BLOCK for x in screen.values())

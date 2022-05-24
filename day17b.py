@@ -52,11 +52,11 @@ def main():
 class Robot(intcode.Process):
     def write_str(self, s):
         for c in s:
-            self.write(ord(c))
-        self.write(ord('\n'))
+            self.write_in(ord(c))
+        self.write_in(ord('\n'))
 
     def read_char(self):
-        y = self.read()
+        y = self.read_out()
         if y is not None and y < 128:
             return chr(y)
         return y

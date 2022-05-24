@@ -20,17 +20,17 @@ def main():
         for phase in phase_seq:
             p = intcode.Process(program)
             procs.append(p)
-            p.write(phase)
+            p.write_in(phase)
 
-        procs[0].write(0)
+        procs[0].write_in(0)
 
         loop_outputs = []
         while True:
             for i, p in enumerate(procs):
-                signal = p.read()
+                signal = p.read_out()
                 if signal is not None:
                     q = procs[(i + 1) % len(procs)]
-                    q.write(signal)
+                    q.write_in(signal)
                 if i == len(procs) - 1:
                     if signal is None:
                         return loop_outputs[-1]

@@ -196,20 +196,20 @@ class Process():
 
         return ret_values, next_ip
 
-    def read(self):
+    def read_out(self):
         try:
             return next(self.outputs)
         except StopIteration:
             return None
 
-    def read_all(self):
+    def read_out_all(self):
         while True:
-            value = self.read()
+            value = self.read_out()
             if value is None:
                 return
             yield value
 
-    def write(self, value):
+    def write_in(self, value):
         self._inputs.append(value)
 
     def dump(self):

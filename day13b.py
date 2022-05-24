@@ -32,17 +32,17 @@ def main():
 
     game = intcode.Process(program)
     game.mem[0] = 2
-    game.write(RIGHT)
+    game.write_in(RIGHT)
 
     paddle_x = None
     ball_x = None
 
     while True:
-        x = game.read()
+        x = game.read_out()
         if x is None:
             break
-        y = game.read()
-        tile = game.read()
+        y = game.read_out()
+        tile = game.read_out()
 
         if (x, y) == (-1, 0):
             score = tile
@@ -57,11 +57,11 @@ def main():
 
             if paddle_x is not None:
                 if paddle_x > ball_x:
-                    game.write(LEFT)
+                    game.write_in(LEFT)
                 elif paddle_x < ball_x:
-                    game.write(RIGHT)
+                    game.write_in(RIGHT)
                 else:
-                    game.write(NEUTRAL)
+                    game.write_in(NEUTRAL)
 
             if DISPLAY:
                 display(screen)

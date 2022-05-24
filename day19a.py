@@ -33,9 +33,9 @@ def main():
         x = slope.denominator
         y = slope.numerator
         p = intcode.Process(program)
-        p.write(x)
-        p.write(y)
-        if p.read():
+        p.write_in(x)
+        p.write_in(y)
+        if p.read_out():
             min_pulled = slope
             break
 
@@ -44,9 +44,9 @@ def main():
         x = slope.denominator
         y = slope.numerator
         p = intcode.Process(program)
-        p.write(x)
-        p.write(y)
-        if p.read():
+        p.write_in(x)
+        p.write_in(y)
+        if p.read_out():
             max_pulled = slope
             break
 

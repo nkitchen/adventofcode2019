@@ -16,7 +16,7 @@ def main():
     program = [int(x) for x in next(f).split(',')]
 
     p = intcode.Process(program)
-    p.write(2)
+    p.write_in(2)
     for y in p.outputs:
         print(y)
 

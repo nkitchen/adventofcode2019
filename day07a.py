@@ -18,9 +18,9 @@ def main():
         signal = 0
         for phase in phase_seq:
             p = intcode.Process(program)
-            p.write(phase)
-            p.write(signal)
-            signal = p.read()
+            p.write_in(phase)
+            p.write_in(signal)
+            signal = p.read_out()
         return signal
 
     m = max(thruster_signal(phase_seq) 
