@@ -40,6 +40,12 @@ N_PARAMS = {
     Op.REL_OFFSET: 1,
 }
 
+class OpcodeError(Exception):
+    pass
+
+class ExecError(Exception):
+    pass
+
 class Process():
     next_id = 1
 
@@ -71,7 +77,11 @@ class Process():
             elif inst.op == Op.REL_OFFSET:
                 self.rel_base += args[0]
             else:
-                ret_values, next_ip = self.exec(inst, args)
+                try:
+                    ret_values, next_ip = self.exec(inst, args)
+                except OpcodeError as e:
+                    self.dump()
+                    raise ExecError(str(e) + f" ip {self.ip}")
 
                 for rv, p in zip(ret_values, inst.dst_params):
                     self.store(rv, p)
@@ -100,19 +110,22 @@ class Process():
 
         # Unrecognized mode?  Keep it undecoded.
         if not(set(modes) <= set([Mode.ADDR, Mode.IMM, Mode.REL])):
-            op = code
+            op = self.mem[ip]
 
         if op in [Op.ADD, Op.MUL, Op.LT, Op.EQ]:
             x = self.mem[ip + 1]
             y = self.mem[ip + 2]
             z = self.mem[ip + 3]
-            src_params = [
-                Param(x, modes[0]),
-                Param(y, modes[1]),
-            ]
-            dst_params = [
-                Param(z, modes[2]),
-            ]
+            try:
+                src_params = [
+                    Param(x, modes[0]),
+                    Param(y, modes[1]),
+                ]
+                dst_params = [
+                    Param(z, modes[2]),
+                ]
+            except IndexError:
+                breakpoint()
         elif op == Op.INPUT:
             z = self.mem[ip + 1]
             src_params = []
@@ -170,7 +183,7 @@ class Process():
         elif inst.op == Op.MUL:
             r = args[0] * args[1]
         elif inst.op == Op.INPUT:
-            r = self._inputs.pop(0)
+            r = self.input()
             if DEBUG:
                 print(f"Process {self.id}: input {r}", file=sys.stderr)
         elif inst.op == Op.OUTPUT:
@@ -188,7 +201,7 @@ class Process():
         elif inst.op == Op.EQ:
             r = int(args[0] == args[1])
         else:
-            raise Exception(f"Unknown opcode: {inst.op}")
+            raise OpcodeError(f"Unknown opcode: {inst.op}")
 
         ret_values = []
         if r is not None:
@@ -211,6 +224,9 @@ class Process():
 
     def write_in(self, value):
         self._inputs.append(value)
+
+    def input(self):
+        return self._inputs.pop(0)
 
     def dump(self):
         buf = io.StringIO()
