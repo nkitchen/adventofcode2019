@@ -225,6 +225,11 @@ class Process():
     def write_in(self, value):
         self._inputs.append(value)
 
+    def write_in_line(self, line):
+        for c in line.rstrip('\n'):
+            self.write_in(ord(c))
+        self.write_in(ord('\n'))
+
     def input(self):
         return self._inputs.pop(0)
 
